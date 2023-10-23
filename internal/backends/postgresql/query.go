@@ -32,11 +32,18 @@ import (
 
 // prepareSelectClause returns simple SELECT clause for provided db and table name,
 // that can be used to construct the SQL query.
-func prepareSelectClause(db, table string) string {
+func prepareSelectClause(db, table, comment string) string {
 	// TODO https://github.com/FerretDB/FerretDB/issues/3573
+	if comment != "" {
+		// prevent SQL injections
+		comment = strings.ReplaceAll(comment, "/*", "/ *")
+		comment = strings.ReplaceAll(comment, "*/", "* /")
+		comment = " /* " + comment + " */"
+	}
 	return fmt.Sprintf(
-		`SELECT %s FROM %s`,
+		`SELECT %s%s FROM %s`,
 		metadata.DefaultColumn,
+		comment,
 		pgx.Identifier{db, table}.Sanitize(),
 	)
 }
@@ -64,7 +71,7 @@ func prepareWhereClause(p *metadata.Placeholder, sqlFilters *types.Document) (st
 		// TODO https://github.com/FerretDB/FerretDB/issues/3573
 
 		// don't pushdown $comment, it's attached to query in handlers
-		if strings.HasPrefix(rootKey, "$") {
+		if rootKey == "$comment" {
 			continue
 		}
 
